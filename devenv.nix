@@ -33,7 +33,7 @@
       components = [
         "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src"
       ];
-      rustflags = "-Z build-std";
+      # rustflags = "-Z build-std";
     };
     python = {
       enable = true;
@@ -80,10 +80,6 @@
 
   # https://devenv.sh/git-hooks/
   # git-hooks.hooks.shellcheck.enable = true;
-  git-hooks.hooks = {
-    clippy.enable = true;
-    rustfmt.enable = true;
-  };
 
   # See full reference at https://devenv.sh/reference/options/
 }
