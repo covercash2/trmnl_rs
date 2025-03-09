@@ -6,3 +6,6 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+
+# imports:
+# - ./risc32-esp-elf-gdb

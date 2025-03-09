@@ -2,7 +2,9 @@
 
 {
   # https://devenv.sh/basics/
-  env.GREET = "devenv";
+  env = {
+    TOML_CFG = "require_cfg_present";
+  };
 
   # https://devenv.sh/packages/
   # https://github.com/esp-rs/esp-idf-template?tab=readme-ov-file#prerequisites
@@ -13,15 +15,17 @@
     cmake
     dfu-util
     espflash
+    esptool # Python utility for messing with the bootloader
     espup
     git
     gperf
     ldproxy
     libffi
     libusb1
-    openssl
     ninja
     nushell
+    openssl
+    uv
     wget
   ];
 
@@ -32,6 +36,11 @@
       channel = "nightly";
       components = [
         "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src"
+      ];
+      targets = [
+        "riscv32imc-unknown-none-elf"
+        "riscv32imac-unknown-none-elf"
+        "riscv32imafc-unknown-none-elf"
       ];
       # rustflags = "-Z build-std";
     };
@@ -56,7 +65,6 @@
   };
 
   enterShell = ''
-    hello
     git --version
   '';
 
@@ -75,7 +83,7 @@
   # https://devenv.sh/tests/
   enterTest = ''
     echo "Running tests"
-    git --version | grep --color=auto "${pkgs.git.version}"
+    cargo test
   '';
 
   # https://devenv.sh/git-hooks/

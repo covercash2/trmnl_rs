@@ -1,0 +1,9 @@
+[package]
+name = "trmnl_core"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+derive_more.workspace = true
+thiserror.workspace = true
+toml-cfg.workspace = true

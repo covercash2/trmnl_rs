@@ -6,4 +6,12 @@ default:
 shell:
   devenv shell
 
+# flash, run, and monitor a release
+run_release:
+  cargo espflash flash --release --monitor
 
+flash:
+  espflash target/riscv32imc-esp-espidf/release/trmnl
+
+test:
+  cargo test
