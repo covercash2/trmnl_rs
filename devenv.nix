@@ -4,6 +4,8 @@
   # https://devenv.sh/basics/
   env = {
     TOML_CFG = "require_cfg_present";
+    LIBCLANG_PATH = "/Users/chrash/.rustup/toolchains/esp/xtensa-esp32-elf-clang/esp-18.1.2_20240912/esp-clang/lib";
+    PATH = "/Users/chrash/.rustup/toolchains/esp/xtensa-esp-elf/esp-14.2.0_20240906/xtensa-esp-elf/bin:$PATH";
   };
 
   # https://devenv.sh/packages/
@@ -13,6 +15,7 @@
     cargo-generate
     ccache
     cmake
+    curl
     dfu-util
     espflash
     esptool # Python utility for messing with the bootloader
@@ -25,6 +28,7 @@
     ninja
     nushell
     openssl
+    rustup
     uv
     wget
   ];
@@ -37,11 +41,11 @@
       components = [
         "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src"
       ];
-      targets = [
-        "riscv32imc-unknown-none-elf"
-        "riscv32imac-unknown-none-elf"
-        "riscv32imafc-unknown-none-elf"
-      ];
+      # targets = [
+      #   "riscv32imc-unknown-none-elf"
+      #   "riscv32imac-unknown-none-elf"
+      #   "riscv32imafc-unknown-none-elf"
+      # ];
       # rustflags = "-Z build-std";
     };
     python = {
