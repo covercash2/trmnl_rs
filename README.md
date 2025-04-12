@@ -6,26 +6,11 @@ just a hobby project.
 
 ## setup
 
-i'm just trying out this `devenv` thing.
-my gut says `flakes` is better long term,
-but this was simple to setup.
-
-needs to be installed:
-```nu
-nix profile install nixpkgs#devenv
-```
-
-oh, and you need to have `nix` installed: https://nixos.org/download.html
+you need to have `nix` installed with flakes enabled: https://nixos.org/download.html
 
 > [!NOTE] i use macOS and nushell and may have built in some opinions.
 > i'm open to contributions if there's interest,
 > but you can pry nushell out of my cold, dead laptop.
-
-### `devenv`
-
-[`devenv`](https://devenv.sh/getting-started/) is supposed to simplify Nix build environments.
-it's not exactly compatible with `nix flakes` yet,
-but heck it was kinda easy to setup in comparison.
 
 ### shell
 
@@ -47,3 +32,9 @@ just
 # or
 just --list
 ```
+
+## the board
+
+this project is basically a firmware for the [ESP32-C3]
+
+[ESP32-C3]: https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf
