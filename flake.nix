@@ -40,80 +40,40 @@
           click
         ]);
 
-        # Define ESP-IDF version
-        esp-idf-version = "5.3.2";
+        # Create a dummy esp-idf-sys .cargo/config.toml to help with cargo build
+        espCargoConfig = pkgs.writeTextFile {
+          name = "cargo-config";
+          destination = "/cargo-config/config.toml";
+          text = ''
+            [target.riscv32imc-unknown-none-elf]
+            runner = "espflash flash --monitor"
+            rustflags = [
+              "-C", "link-arg=-nostartfiles",
+            ]
 
-        # Create a simple ESP-IDF environment
-        esp-idf-tools = pkgs.stdenv.mkDerivation {
-          name = "esp-idf-tools";
-          version = esp-idf-version;
+            [build]
+            target = "riscv32imc-unknown-none-elf"
 
-          # Use a simple empty directory as source
-          src = pkgs.emptyDirectory;
-
-          nativeBuildInputs = [ pkgs.makeWrapper ];
-          dontBuild = true;
-          dontConfigure = true;
-
-          # Create a minimal directory structure with essential ESP-IDF files
-          installPhase = ''
-            mkdir -p $out/tools/cmake
-            mkdir -p $out/components/esp_system/include
-
-            # Create version.cmake file
-            cat > $out/tools/cmake/version.cmake << EOF
-            # This file was generated
-            set(IDF_VERSION_MAJOR 5)
-            set(IDF_VERSION_MINOR 3)
-            set(IDF_VERSION_PATCH 2)
-            set(IDF_VERSION "v5.3.2")
-            EOF
-
-            # Create a minimal project_include.cmake
-            cat > $out/tools/cmake/project.cmake << EOF
-            # Minimal project.cmake
-            set(IDF_PATH "$out")
-            EOF
-
-            # Create a minimal sdkconfig.h file
-            cat > $out/components/esp_system/include/sdkconfig.h << EOF
-            // Minimal sdkconfig.h
-            #define CONFIG_IDF_TARGET_ESP32C3 1
-            EOF
-
-            # Create version.txt file
-            echo "${esp-idf-version}" > $out/version.txt
-
-            # Create version.json file
-            echo '{"version": "v${esp-idf-version}", "git_revision": "v${esp-idf-version}"}' > $out/version.json
+            [env]
+            ESP_IDF_VERSION = "v5.3.2"
+            MCU = "esp32c3"
+            ESP_IDF_SDKCONFIG_DEFAULTS = "./sdkconfig.defaults"
           '';
         };
 
-        # Define ESP-IDF environment variables
-        idfPath = "${esp-idf-tools}";
-        espArch = "riscv32imc-unknown-none-elf";
-        libclangPath = "${pkgs.llvmPackages_16.libclang.lib}/lib";
-        espBoard = "esp32c3";
+        # Create sdkconfig.defaults file
+        sdkConfig = pkgs.writeTextFile {
+          name = "sdkconfig-defaults";
+          destination = "/sdkconfig/sdkconfig.defaults";
+          text = ''
+            CONFIG_IDF_TARGET="esp32c3"
+            CONFIG_IDF_TARGET_ESP32C3=y
+            CONFIG_IDF_FIRMWARE_CHIP_ID=0x0005
+          '';
+        };
 
-        # Create a script to set ESP-IDF environment variables
-        esp-env-script = pkgs.writeShellScriptBin "esp-env.sh" ''
-          # This script sets ESP-IDF environment variables
-
-          # Set paths
-          export IDF_PATH="${idfPath}"
-          export ESP_ARCH="${espArch}"
-          export LIBCLANG_PATH="${libclangPath}"
-          export ESP_BOARD="${espBoard}"
-          export ESP_IDF_VERSION="v${esp-idf-version}"
-
-          # Configure esp-idf-sys to use files from our ESP-IDF directory
-          export ESP_IDF_SDKCONFIG_DEFAULTS="${idfPath}/components/esp_system/include/sdkconfig.h"
-
-          # Allow dynamic binaries to run
-          export NIX_ENFORCE_PURITY=0
-
-          echo "ESP-IDF environment set up successfully"
-        '';
+        # Define ESP-IDF version
+        esp-idf-version = "5.3.2";
       in
       {
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.llvmPackages_16.stdenv; } {
@@ -122,10 +82,6 @@
           nativeBuildInputs = with pkgs; [
             # Rust
             rustToolchain
-
-            # ESP environment
-            esp-env-script
-            esp-idf-tools
 
             # Cargo tools
             cargo-espflash
@@ -140,9 +96,14 @@
             ninja
             pkg-config
             llvmPackages_16.clang
+            git
 
             # Python environment
             pythonEnv
+
+            # Configuration files
+            espCargoConfig
+            sdkConfig
 
             # Additional tools
             just
@@ -159,41 +120,64 @@
               pkgs.zlib
             ]}:$LD_LIBRARY_PATH
 
-            # Source ESP environment script
-            source ${esp-env-script}/bin/esp-env.sh
+            # Create sdkconfig.defaults in the project directory
+            cp ${sdkConfig}/sdkconfig/sdkconfig.defaults ./sdkconfig.defaults
 
-            # Additional environment variables for esp-idf-sys
+            # Create .cargo/config.toml
+            mkdir -p .cargo
+            cp ${espCargoConfig}/cargo-config/config.toml .cargo/config.toml
+
+            # Use Rust's cc to build C code
+            export CC=gcc
+            export CXX=g++
+
+            # ESP environment variables
+            export ESP_ARCH="riscv32imc-unknown-none-elf"
+            export ESP_BOARD="esp32c3"
             export ESP_IDF_VERSION="v${esp-idf-version}"
             export ESP_IDF_TOOLS_INSTALL_DIR="$HOME/.espressif"
+            export ESP_IDF_SDKCONFIG_DEFAULTS="$(pwd)/sdkconfig.defaults"
+            export MCU="esp32c3"
+
+            # Allow Nix to run dynamically linked binaries
+            export NIX_ENFORCE_PURITY=0
 
             # Welcome message
             echo "🦀 ESP32-C3 Rust development environment ready"
             echo ""
             echo "Environment variables set:"
-            echo "  IDF_PATH=${idfPath}"
             echo "  ESP_ARCH=${espArch}"
-            echo "  LIBCLANG_PATH=${libclangPath}"
-            echo "  ESP_BOARD=${espBoard}"
+            echo "  ESP_BOARD=esp32c3"
             echo "  ESP_IDF_VERSION=v${esp-idf-version}"
+            echo "  ESP_IDF_SDKCONFIG_DEFAULTS=$(pwd)/sdkconfig.defaults"
+            echo "  MCU=esp32c3"
             echo ""
-            echo "Commands available:"
-            echo "  - cargo build --target riscv32imc-unknown-none-elf [--release]"
-            echo "  - cargo-espflash <PORT> --target riscv32imc-unknown-none-elf [--release]"
+            echo "Copied configuration files:"
+            echo "  sdkconfig.defaults - ESP-IDF configuration"
+            echo "  .cargo/config.toml - Cargo configuration"
+            echo ""
+            echo "Commands:"
+            echo "  - cargo build [--release]"
+            echo "  - cargo-espflash <PORT> [--release]"
             echo ""
             echo "First-time setup:"
-            echo "  To prepare the build environment, run:"
-            echo "    mkdir -p $HOME/.espressif"
+            echo "  To prepare the build environment, you'll need to install ESP-IDF tools."
+            echo "  Run: cargo install espup && espup install"
+            echo ""
+            echo "  This will install ESP-IDF tools in $HOME/.espressif"
             echo ""
           '';
 
           # Include necessary environment variables
-          LIBCLANG_PATH = libclangPath;
-          IDF_PATH = idfPath;
-          ESP_ARCH = espArch;
-          ESP_BOARD = espBoard;
+          ESP_ARCH = "riscv32imc-unknown-none-elf";
+          ESP_BOARD = "esp32c3";
           ESP_IDF_VERSION = "v${esp-idf-version}";
-          ESP_IDF_TOOLS_INSTALL_DIR = "$HOME/.espressif";
+          MCU = "esp32c3";
           NIX_ENFORCE_PURITY = 0;
+
+          # Use Rust's cc to build C code
+          CC = "gcc";
+          CXX = "g++";
         };
       });
 }
