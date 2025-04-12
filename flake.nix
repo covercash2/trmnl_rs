@@ -35,59 +35,72 @@
           pyparsing
           future
           cryptography
+          packaging
+          pyyaml
+          click
         ]);
 
-        # Create a custom esp-idf-tools package with Nix tools
-        # This avoids the dynamic linking issues with pre-built binaries
+        # Create a proper ESP-IDF environment by fetching the ESP-IDF repo
+        esp-idf = pkgs.fetchFromGitHub {
+          owner = "espressif";
+          repo = "esp-idf";
+          rev = "v5.3.2";
+          sha256 = "sha256-KHoKgv8yHv+a+HIVkrceeI5eF7MR62UU7ex/lI0jyKM=`";
+          fetchSubmodules = false; # We don't need all submodules
+        };
+
+        # Create our ESP-IDF tools package
         esp-idf-tools = pkgs.stdenv.mkDerivation {
           name = "esp-idf-tools";
           version = "5.3.2";
 
-          # Create a dummy source
-          src = pkgs.writeTextDir "source" "Dummy source for esp-idf-tools";
+          src = esp-idf;
 
-          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeBuildInputs = [ pkgs.makeWrapper pkgs.git pythonEnv ];
 
-          # Explicitly disable configure phase to avoid CMake errors
+          # Skip configure and build
           dontConfigure = true;
-
-          # Disable build phase as we're not building anything
           dontBuild = true;
 
           installPhase = ''
+            mkdir -p $out
+            cp -r $src/* $out/
+
+            # Create a script to set up environment variables
             mkdir -p $out/bin
-            mkdir -p $out/share/esp-idf-tools
-
-            # Create a simple IDF_PATH directory structure
-            mkdir -p $out/share/esp-idf-tools/esp-idf
-            echo "5.3.2" > $out/share/esp-idf-tools/esp-idf/version.txt
-
-            # Create a script to set up the ESP-IDF environment
             cat > $out/bin/esp-idf-export.sh << EOF
             #!/bin/sh
 
             # ESP-IDF environment variables
-            export IDF_PATH="$out/share/esp-idf-tools/esp-idf"
+            export IDF_PATH="$out"
             export ESP_ARCH="riscv32imc-unknown-none-elf"
             export LIBCLANG_PATH="${pkgs.llvmPackages_16.libclang.lib}/lib"
 
+            # Set up the build environment
+            export ESP_BOARD="esp32c3"
+
             # Add tools to path
             export PATH="${pkgs.cmake}/bin:${pkgs.ninja}/bin:$PATH"
-
-            # Export environment variables for cargo-espflash
-            export ESP_BOARD="esp32c3"
             EOF
 
             chmod +x $out/bin/esp-idf-export.sh
 
-            # Create drop-in replacements for ESP-IDF tools that use Nix tools
-            makeWrapper ${pkgs.cmake}/bin/cmake $out/bin/cmake --set IDF_PATH "$out/share/esp-idf-tools/esp-idf"
-            makeWrapper ${pkgs.ninja}/bin/ninja $out/bin/ninja --set IDF_PATH "$out/share/esp-idf-tools/esp-idf"
+            # Create version.json for esp-idf-sys to recognize
+            echo '{"version": "v5.3.2", "git_revision": "v5.3.2"}' > $out/version.json
+
+            # Create a git repo to make esp-idf-sys happy
+            cd $out
+            git init .
+            git config --local user.email "nix@example.com"
+            git config --local user.name "Nix Build"
+            git add .
+            git commit -m "Initial commit"
+            git tag -a v5.3.2 -m "v5.3.2"
           '';
         };
 
-        # Define these values here so we can reference them in shellHook
-        idfPath = "${esp-idf-tools}/share/esp-idf-tools/esp-idf";
+        # Define these values for shellHook
+        idfPath = "${esp-idf-tools}";
         espArch = "riscv32imc-unknown-none-elf";
         libclangPath = "${pkgs.llvmPackages_16.libclang.lib}/lib";
         espBoard = "esp32c3";
@@ -116,6 +129,7 @@
             ninja
             pkg-config
             llvmPackages_16.clang
+            git
 
             # Python environment
             pythonEnv
