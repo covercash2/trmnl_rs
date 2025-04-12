@@ -48,15 +48,11 @@
 
           nativeBuildInputs = [ pkgs.makeWrapper ];
 
-          buildInputs = with pkgs; [
-            cmake
-            ninja
-            gcc
-            llvmPackages_16.clang
-            llvmPackages_16.libclang.lib
-          ];
+          # Explicitly disable configure phase to avoid CMake errors
+          dontConfigure = true;
 
-          buildPhase = "true"; # Do nothing
+          # Disable build phase as we're not building anything
+          dontBuild = true;
 
           installPhase = ''
             mkdir -p $out/bin
@@ -145,7 +141,7 @@
             export LIBCLANG_PATH="${libclangPath}"
             export ESP_BOARD="${espBoard}"
 
-            # Allow Nix to run dynamically linked binaries (needed for some ESP-IDF tools)
+            # Allow Nix to run dynamically linked binaries
             export NIX_ENFORCE_PURITY=0
 
             # Welcome message
