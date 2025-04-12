@@ -8,7 +8,6 @@ anyhow = "1.0.97"
 derive_more = { version = "2.0.1", features = ["display", "deref", "from", "as_ref", "into_iterator"] }
 epd-waveshare = "0.6.0"
 esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
-esp-idf-sys = { version = "0.36.1", features = ["esp32c3"] }
 log = "0.4"
 thiserror = "2.0.12"
 toml-cfg = "0.2.0"
@@ -50,5 +49,4 @@ trmnl_core.workspace = true
 [build-dependencies]
 embuild = "0.33"
 toml-cfg.workspace = true
-
-esp-idf-sys = { version = "0.36.1", features = ["esp32c3"] }
+esp-idf-sys = { version = "0.36.1" }

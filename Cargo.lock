@@ -1501,6 +1501,7 @@ dependencies = [
  "embuild",
  "epd-waveshare",
  "esp-idf-svc",
+ "esp-idf-sys",
  "log",
  "toml-cfg",
  "trmnl_core",

@@ -108,15 +108,41 @@
           '';
         };
 
-        # Create a script to install ESP tools
+        # Create a script to install ESP tools - CORRECTED TARGET NAME
         espToolsInstaller = pkgs.writeShellScriptBin "install-esp-tools" ''
           #!/usr/bin/env bash
           echo "Installing ESP tools..."
-          cargo install espup
-          espup install --targets riscv32imc-esp-espidf
+
+          # Install espup if needed
+          if ! command -v espup &> /dev/null; then
+            echo "Installing espup..."
+            cargo install espup
+          else
+            echo "espup is already installed"
+          fi
+
+          # List available targets
+          echo "Available targets:"
+          espup --version
+          echo "Running: espup install"
+
+          # Install ESP-IDF with esp32c3 target
+          espup install --targets esp32c3
+
+          # Create a helper script to easily source the ESP-IDF environment
+          cat > esp-env.sh << EOF
+          #!/bin/bash
+          source \$HOME/.espressif/esp-idf/export.sh
+          echo "ESP-IDF environment sourced!"
+          EOF
+          chmod +x esp-env.sh
+
           echo ""
-          echo "ESP tools installed. You'll need to restart your shell."
-          echo 'Make sure to run `source $HOME/.espressif/esp-idf/export.sh` in your shell before building.'
+          echo "ESP tools installed successfully!"
+          echo ""
+          echo "To set up your environment for building:"
+          echo "1. Run: source \$HOME/.espressif/esp-idf/export.sh"
+          echo "2. Or use the helper script: source ./esp-env.sh"
         '';
 
         # Create a script to initialize a new project
@@ -190,6 +216,21 @@
           echo "Flashing to $1..."
           cargo-espflash $1 --target riscv32imc-unknown-none-elf --release
         '';
+
+        # Create a monitor script
+        monitorScript = pkgs.writeShellScriptBin "esp-monitor" ''
+          #!/usr/bin/env bash
+          if [ -z "$1" ]; then
+            echo "Usage: esp-monitor <PORT> [BAUD]"
+            echo "Example: esp-monitor /dev/ttyUSB0 115200"
+            exit 1
+          fi
+
+          BAUD=''${2:-115200}
+
+          echo "Opening serial monitor on $1 at $BAUD baud..."
+          ${pkgs.screen}/bin/screen $1 $BAUD
+        '';
       in
       {
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.llvmPackages_16.stdenv; } {
@@ -204,6 +245,7 @@
             cargo-generate
             cargo-watch
             cargo-binutils
+            rustup
 
             # ESP tools
             esptool
@@ -213,6 +255,7 @@
             projectInitializer
             buildScript
             flashScript
+            monitorScript
             cargoTomlPatch
 
             # Build tools
@@ -221,6 +264,9 @@
             pkg-config
             llvmPackages_16.clang
             git
+
+            # Serial tools
+            screen
 
             # Python environment
             pythonEnv
@@ -275,6 +321,7 @@
             echo "  2. Install ESP-IDF:   install-esp-tools"
             echo "  3. Build project:     esp-build"
             echo "  4. Flash to device:   esp-flash <PORT>"
+            echo "  5. Monitor device:    esp-monitor <PORT> [BAUD]"
             echo ""
             echo "Make sure your Cargo.toml includes:"
             echo "  esp-idf-sys = { version = \"0.36.1\", features = [\"esp32c3\"] }"
