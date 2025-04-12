@@ -6,6 +6,9 @@ members = [
 [workspace.dependencies]
 anyhow = "1.0.97"
 derive_more = { version = "2.0.1", features = ["display", "deref", "from", "as_ref", "into_iterator"] }
+epd-waveshare = "0.6.0"
+esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
+log = "0.4"
 thiserror = "2.0.12"
 toml-cfg = "0.2.0"
 trmnl_core = { path = "core" }
@@ -36,9 +39,9 @@ experimental = ["esp-idf-svc/experimental"]
 [dependencies]
 anyhow.workspace = true
 derive_more.workspace = true
-epd-waveshare = "0.6.0"
-esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
-log = "0.4"
+epd-waveshare.workspace = true
+esp-idf-svc.workspace = true
+log.workspace = true
 toml-cfg.workspace = true
 trmnl_core.workspace = true
 

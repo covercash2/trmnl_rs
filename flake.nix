@@ -40,6 +40,11 @@
           click
         ]);
 
+        # Define constants
+        espArch = "riscv32imc-unknown-none-elf";
+        espBoard = "esp32c3";
+        espIdfVersion = "5.3.2";
+
         # Create a dummy esp-idf-sys .cargo/config.toml to help with cargo build
         espCargoConfig = pkgs.writeTextFile {
           name = "cargo-config";
@@ -55,8 +60,8 @@
             target = "riscv32imc-unknown-none-elf"
 
             [env]
-            ESP_IDF_VERSION = "v5.3.2"
-            MCU = "esp32c3"
+            ESP_IDF_VERSION = "v${espIdfVersion}"
+            MCU = "${espBoard}"
             ESP_IDF_SDKCONFIG_DEFAULTS = "./sdkconfig.defaults"
           '';
         };
@@ -66,14 +71,11 @@
           name = "sdkconfig-defaults";
           destination = "/sdkconfig/sdkconfig.defaults";
           text = ''
-            CONFIG_IDF_TARGET="esp32c3"
+            CONFIG_IDF_TARGET="${espBoard}"
             CONFIG_IDF_TARGET_ESP32C3=y
             CONFIG_IDF_FIRMWARE_CHIP_ID=0x0005
           '';
         };
-
-        # Define ESP-IDF version
-        esp-idf-version = "5.3.2";
       in
       {
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.llvmPackages_16.stdenv; } {
@@ -132,12 +134,12 @@
             export CXX=g++
 
             # ESP environment variables
-            export ESP_ARCH="riscv32imc-unknown-none-elf"
-            export ESP_BOARD="esp32c3"
-            export ESP_IDF_VERSION="v${esp-idf-version}"
+            export ESP_ARCH="${espArch}"
+            export ESP_BOARD="${espBoard}"
+            export ESP_IDF_VERSION="v${espIdfVersion}"
             export ESP_IDF_TOOLS_INSTALL_DIR="$HOME/.espressif"
             export ESP_IDF_SDKCONFIG_DEFAULTS="$(pwd)/sdkconfig.defaults"
-            export MCU="esp32c3"
+            export MCU="${espBoard}"
 
             # Allow Nix to run dynamically linked binaries
             export NIX_ENFORCE_PURITY=0
@@ -147,10 +149,10 @@
             echo ""
             echo "Environment variables set:"
             echo "  ESP_ARCH=${espArch}"
-            echo "  ESP_BOARD=esp32c3"
-            echo "  ESP_IDF_VERSION=v${esp-idf-version}"
+            echo "  ESP_BOARD=${espBoard}"
+            echo "  ESP_IDF_VERSION=v${espIdfVersion}"
             echo "  ESP_IDF_SDKCONFIG_DEFAULTS=$(pwd)/sdkconfig.defaults"
-            echo "  MCU=esp32c3"
+            echo "  MCU=${espBoard}"
             echo ""
             echo "Copied configuration files:"
             echo "  sdkconfig.defaults - ESP-IDF configuration"
@@ -169,10 +171,10 @@
           '';
 
           # Include necessary environment variables
-          ESP_ARCH = "riscv32imc-unknown-none-elf";
-          ESP_BOARD = "esp32c3";
-          ESP_IDF_VERSION = "v${esp-idf-version}";
-          MCU = "esp32c3";
+          ESP_ARCH = espArch;
+          ESP_BOARD = espBoard;
+          ESP_IDF_VERSION = "v${espIdfVersion}";
+          MCU = espBoard;
           NIX_ENFORCE_PURITY = 0;
 
           # Use Rust's cc to build C code
