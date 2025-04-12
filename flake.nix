@@ -45,24 +45,32 @@
         espBoard = "esp32c3";
         espIdfVersion = "5.3.2";
 
-        # Create a dummy esp-idf-sys .cargo/config.toml to help with cargo build
+        # Create .cargo/config.toml with proper settings for ESP32-C3
         espCargoConfig = pkgs.writeTextFile {
           name = "cargo-config";
           destination = "/cargo-config/config.toml";
           text = ''
+            [build]
+            target = "riscv32imc-unknown-none-elf"
+
             [target.riscv32imc-unknown-none-elf]
             runner = "espflash flash --monitor"
             rustflags = [
               "-C", "link-arg=-nostartfiles",
+              "-C", "link-arg=-Wl,-Tlink.x",
+              "-C", "force-frame-pointers=yes",
             ]
 
-            [build]
-            target = "riscv32imc-unknown-none-elf"
+            [unstable]
+            build-std = ["std", "panic_abort", "core", "alloc"]
+            build-std-features = ["panic_immediate_abort"]
 
             [env]
             ESP_IDF_VERSION = "v${espIdfVersion}"
             MCU = "${espBoard}"
             ESP_IDF_SDKCONFIG_DEFAULTS = "./sdkconfig.defaults"
+            ESP_IDF_TOOLS_INSTALL_DIR = "~/.espressif"
+            RUST_ESP32_STD_HELLO_GPIO = "2"
           '';
         };
 
@@ -74,8 +82,39 @@
             CONFIG_IDF_TARGET="${espBoard}"
             CONFIG_IDF_TARGET_ESP32C3=y
             CONFIG_IDF_FIRMWARE_CHIP_ID=0x0005
+            CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
+            CONFIG_ESP_CONSOLE_UART_DEFAULT=y
           '';
         };
+
+        # Create a script to install ESP tools
+        espToolsInstaller = pkgs.writeShellScriptBin "install-esp-tools" ''
+          #!/usr/bin/env bash
+          echo "Installing ESP tools..."
+          cargo install espup
+          espup install --targets riscv32imc-esp-espidf
+          echo "ESP tools installed. You'll need to restart your shell."
+          echo 'Make sure to run `source $HOME/.espressif/esp-idf/export.sh` in your shell before building.'
+        '';
+
+        # Create a script to build the project
+        buildScript = pkgs.writeShellScriptBin "esp-build" ''
+          #!/usr/bin/env bash
+          echo "Building ESP32-C3 project..."
+          RUSTFLAGS="--cfg espidf_time64" cargo build --release -Z build-std=std,panic_abort --target riscv32imc-unknown-none-elf
+        '';
+
+        # Create a script to flash the project
+        flashScript = pkgs.writeShellScriptBin "esp-flash" ''
+          #!/usr/bin/env bash
+          if [ -z "$1" ]; then
+            echo "Usage: esp-flash <PORT>"
+            echo "Example: esp-flash /dev/ttyUSB0"
+            exit 1
+          fi
+          echo "Flashing to $1..."
+          cargo-espflash $1 --target riscv32imc-unknown-none-elf --release
+        '';
       in
       {
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.llvmPackages_16.stdenv; } {
@@ -89,9 +128,15 @@
             cargo-espflash
             cargo-generate
             cargo-watch
+            cargo-binutils
 
             # ESP tools
             esptool
+
+            # Custom scripts
+            espToolsInstaller
+            buildScript
+            flashScript
 
             # Build tools
             cmake
@@ -129,10 +174,6 @@
             mkdir -p .cargo
             cp ${espCargoConfig}/cargo-config/config.toml .cargo/config.toml
 
-            # Use Rust's cc to build C code
-            export CC=gcc
-            export CXX=g++
-
             # ESP environment variables
             export ESP_ARCH="${espArch}"
             export ESP_BOARD="${espBoard}"
@@ -141,8 +182,17 @@
             export ESP_IDF_SDKCONFIG_DEFAULTS="$(pwd)/sdkconfig.defaults"
             export MCU="${espBoard}"
 
+            # Rust environment variables
+            export RUSTFLAGS="--cfg espidf_time64"
+            export RUST_BACKTRACE=1
+
             # Allow Nix to run dynamically linked binaries
             export NIX_ENFORCE_PURITY=0
+
+            # Source ESP-IDF export script if it exists
+            if [ -f "$HOME/.espressif/esp-idf/export.sh" ]; then
+              source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1 || true
+            fi
 
             # Welcome message
             echo "🦀 ESP32-C3 Rust development environment ready"
@@ -151,22 +201,20 @@
             echo "  ESP_ARCH=${espArch}"
             echo "  ESP_BOARD=${espBoard}"
             echo "  ESP_IDF_VERSION=v${espIdfVersion}"
-            echo "  ESP_IDF_SDKCONFIG_DEFAULTS=$(pwd)/sdkconfig.defaults"
-            echo "  MCU=${espBoard}"
             echo ""
-            echo "Copied configuration files:"
-            echo "  sdkconfig.defaults - ESP-IDF configuration"
-            echo "  .cargo/config.toml - Cargo configuration"
+            echo "Setup Instructions:"
+            echo "  1. First time? Run: install-esp-tools"
+            echo "     This installs ESP-IDF tools in $HOME/.espressif"
             echo ""
-            echo "Commands:"
-            echo "  - cargo build [--release]"
-            echo "  - cargo-espflash <PORT> [--release]"
+            echo "  2. After installation, run: source $HOME/.espressif/esp-idf/export.sh"
             echo ""
-            echo "First-time setup:"
-            echo "  To prepare the build environment, you'll need to install ESP-IDF tools."
-            echo "  Run: cargo install espup && espup install"
+            echo "Building Commands:"
+            echo "  - Build:  esp-build"
+            echo "  - Flash:  esp-flash <PORT>  (e.g., esp-flash /dev/ttyUSB0)"
             echo ""
-            echo "  This will install ESP-IDF tools in $HOME/.espressif"
+            echo "Manual Commands:"
+            echo "  - Build:  RUSTFLAGS=\"--cfg espidf_time64\" cargo build --release -Z build-std=std,panic_abort --target riscv32imc-unknown-none-elf"
+            echo "  - Flash:  cargo-espflash <PORT> --target riscv32imc-unknown-none-elf --release"
             echo ""
           '';
 
@@ -176,10 +224,8 @@
           ESP_IDF_VERSION = "v${espIdfVersion}";
           MCU = espBoard;
           NIX_ENFORCE_PURITY = 0;
-
-          # Use Rust's cc to build C code
-          CC = "gcc";
-          CXX = "g++";
+          RUSTFLAGS = "--cfg espidf_time64";
+          RUST_BACKTRACE = 1;
         };
       });
 }
