@@ -13,7 +13,9 @@ devenv.local.nix
 # see build.rs
 cfg.toml
 
+# generated files
 .esp-idf-sys
+esp-idf-export.sh"
 
 # Rust
 target/
