@@ -1,4 +1,0 @@
-[wokwi]
-version = 1
-firmware = "./target/riscv32imc-esp-espidf/debug/trmnl"
-elf = "./target/riscv32imc-esp-espidf/debug/trmnl"

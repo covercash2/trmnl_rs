@@ -1,5 +1,7 @@
 [build]
 target = "riscv32imc-unknown-none-elf"
+esp-idf-version = "v5.3.2"
+mcu = "esp32c3"
 
 [target.riscv32imc-unknown-none-elf]
 runner = "espflash flash --monitor"

@@ -20,9 +20,14 @@
         };
 
         # Use nightly Rust for ESP32-C3 development (RISC-V target)
+        # https://github.com/esp-rs/esp-idf-template?tab=readme-ov-file#flash
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
-          extensions = [ "rust-src" "rust-analyzer" ];
-          targets = [ "riscv32imc-unknown-none-elf" ];  # ESP32-C3 uses RISC-V architecture
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+            "llvm-tools-preview"
+          ];
+          # targets = [ "riscv32imc-esp-espidf" ];  # ESP32-C3 uses RISC-V architecture
         };
 
         # Python dependencies for ESP-IDF
@@ -42,7 +47,7 @@
         ]);
 
         # Define constants
-        espArch = "riscv32imc-esp-espidf";
+        espArch = "riscv32imc-unknown-none-elf";
         espBoard = "esp32c3";
         espIdfVersion = "5.3.2";
 
@@ -53,56 +58,13 @@
 
           # Install ESP-IDF with esp32c3 target
           echo "Installing ESP-IDF for ESP32-C3..."
-          espup install --targets esp32c3 --export-file esp-idf-export.sh
+          espup install --targets ${espBoard} --export-file esp-idf-export.sh
 
           echo ""
           echo "ESP tools installed successfully!"
           echo ""
           echo "To set up your environment for building:"
           echo "Run: source esp-idf-export.sh"
-        '';
-
-        # Create a script to build the project
-        buildScript = pkgs.writeShellScriptBin "esp-build" ''
-          #!/usr/bin/env bash
-          echo "Building ESP32-C3 project..."
-
-          # Check if the ESP-IDF export script exists
-          if [ -f "esp-idf-export.sh" ]; then
-            source "esp-idf-export.sh" > /dev/null 2>&1
-          elif [ -f "$HOME/.espressif/esp-idf/export.sh" ]; then
-            source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1
-          else
-            echo "Warning: ESP-IDF export script not found."
-            echo "Have you run 'install-esp-tools' yet?"
-          fi
-
-          # Build with explicit features for esp32c3
-          RUSTFLAGS="--cfg espidf_time64" MCU=${espBoard} \
-            cargo build --release \
-            -Z build-std=std,panic_abort \
-            --target ${espArch}
-
-          if [ $? -eq 0 ]; then
-            echo ""
-            echo "Build succeeded! Use 'esp-flash <PORT>' to flash to your device."
-          else
-            echo ""
-            echo "Build failed."
-          fi
-        '';
-
-        # Create a script to flash the project
-        flashScript = pkgs.writeShellScriptBin "esp-flash" ''
-          #!/usr/bin/env bash
-          if [ -z "$1" ]; then
-            echo "Usage: esp-flash <PORT>"
-            echo "Example: esp-flash /dev/ttyUSB0"
-            exit 1
-          fi
-
-          echo "Flashing to $1..."
-          cargo-espflash $1 --target ${espArch} --release
         '';
 
         # Create a monitor script
@@ -185,20 +147,23 @@
             rustup
 
             # ESP tools
+            espflash
             esptool
             espup
 
             # Custom scripts
             espToolsInstaller
-            buildScript
-            flashScript
             monitorScript
             espBuildHelpers
 
             # Build tools
+            # https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html#step-1-install-prerequisites
+            ccache
             cmake
+            dfu-util
             ninja
             pkg-config
+            libusb1
             llvmPackages_16.clang
             git
 
@@ -241,6 +206,8 @@
               source "esp-idf-export.sh" > /dev/null 2>&1 || true
               echo "Sourced esp-idf-export.sh from current directory"
             fi
+
+
 
             # Welcome message
             echo "🦀 ESP32-C3 Rust development environment ready"

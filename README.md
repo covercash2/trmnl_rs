@@ -37,4 +37,9 @@ just --list
 
 this project is basically a firmware for the [ESP32-C3]
 
+### Rust ESP stuff
+
+a lot of work is based on the [`esp-idf-template`].
+
 [ESP32-C3]: https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf
+[`esp-idf-template`]: https://github.com/esp-rs/esp-idf-template#prerequisites
