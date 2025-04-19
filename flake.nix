@@ -38,137 +38,28 @@
           packaging
           pyyaml
           click
+          GitPython
         ]);
 
         # Define constants
-        espArch = "riscv32imc-unknown-none-elf";
+        espArch = "riscv32imc-esp-espidf";
         espBoard = "esp32c3";
         espIdfVersion = "5.3.2";
 
-        # Create .cargo/config.toml with proper settings for ESP32-C3
-        espCargoConfig = pkgs.writeTextFile {
-          name = "cargo-config";
-          destination = "/cargo-config/config.toml";
-          text = ''
-            [build]
-            target = "riscv32imc-unknown-none-elf"
-
-            [target.riscv32imc-unknown-none-elf]
-            runner = "espflash flash --monitor"
-            rustflags = [
-              "-C", "link-arg=-nostartfiles",
-              "-C", "link-arg=-Wl,-Tlink.x",
-              "-C", "force-frame-pointers=yes",
-            ]
-
-            [unstable]
-            build-std = ["std", "panic_abort", "core", "alloc"]
-            build-std-features = ["panic_immediate_abort"]
-
-            [env]
-            ESP_IDF_VERSION = "v${espIdfVersion}"
-            MCU = "${espBoard}"
-          '';
-        };
-
-        # Create a Cargo.toml patch to enforce ESP32-C3 compatibility
-        cargoTomlPatch = pkgs.writeTextFile {
-          name = "cargo-toml-patch";
-          destination = "/cargo-patch/patch-dependencies.sh";
-          executable = true;
-          text = ''
-            #!/usr/bin/env bash
-
-            # Check if Cargo.toml exists
-            if [ ! -f "Cargo.toml" ]; then
-              echo "Error: Cargo.toml not found in current directory."
-              exit 1
-            fi
-
-            # Backup original Cargo.toml
-            cp Cargo.toml Cargo.toml.bak
-
-            # Ensure esp-idf-sys has esp32c3 feature enabled
-            if grep -q "esp-idf-sys" Cargo.toml; then
-              # If dependencies are in [dependencies] section with version numbers
-              sed -i 's/esp-idf-sys\s*=\s*{\s*version\s*=\s*"\([^"]*\)"[^}]*}/esp-idf-sys = { version = "\1", features = ["esp32c3"] }/g' Cargo.toml
-              # If dependencies are just version strings
-              sed -i 's/esp-idf-sys\s*=\s*"\([^"]*\)"/esp-idf-sys = { version = "\1", features = ["esp32c3"] }/g' Cargo.toml
-              # If esp-idf-sys is already a table but doesn't have features
-              sed -i '/esp-idf-sys\s*=\s*{/ {
-                /features\s*=/ ! s/esp-idf-sys\s*=\s*{/esp-idf-sys = { features = ["esp32c3"], /
-              }' Cargo.toml
-            else
-              # Add esp-idf-sys dependency if it doesn't exist
-              echo 'esp-idf-sys = { version = "0.36.1", features = ["esp32c3"] }' >> Cargo.toml
-            fi
-
-            echo "Updated Cargo.toml to use esp-idf-sys with esp32c3 feature"
-            echo "Original file saved as Cargo.toml.bak"
-          '';
-        };
-
-        # Create a script to install ESP tools - CORRECTED TARGET NAME
+        # Create a script to install ESP tools
         espToolsInstaller = pkgs.writeShellScriptBin "install-esp-tools" ''
           #!/usr/bin/env bash
           echo "Installing ESP tools..."
 
-          # Install espup if needed
-          if ! command -v espup &> /dev/null; then
-            echo "Installing espup..."
-            cargo install espup
-          else
-            echo "espup is already installed"
-          fi
-
-          # List available targets
-          echo "Available targets:"
-          espup --version
-          echo "Running: espup install"
-
           # Install ESP-IDF with esp32c3 target
-          espup install --targets esp32c3
-
-          # Create a helper script to easily source the ESP-IDF environment
-          cat > esp-env.sh << EOF
-          #!/bin/bash
-          source \$HOME/.espressif/esp-idf/export.sh
-          echo "ESP-IDF environment sourced!"
-          EOF
-          chmod +x esp-env.sh
+          echo "Installing ESP-IDF for ESP32-C3..."
+          espup install --targets esp32c3 --export-file esp-idf-export.sh
 
           echo ""
           echo "ESP tools installed successfully!"
           echo ""
           echo "To set up your environment for building:"
-          echo "1. Run: source \$HOME/.espressif/esp-idf/export.sh"
-          echo "2. Or use the helper script: source ./esp-env.sh"
-        '';
-
-        # Create a script to initialize a new project
-        projectInitializer = pkgs.writeShellScriptBin "init-esp-project" ''
-          #!/usr/bin/env bash
-          echo "Initializing ESP32-C3 project..."
-
-          # Apply the Cargo.toml patch
-          bash ${cargoTomlPatch}/cargo-patch/patch-dependencies.sh
-
-          # Create a basic .cargo/config.toml file
-          mkdir -p .cargo
-          cp ${espCargoConfig}/cargo-config/config.toml .cargo/config.toml
-
-          # Create an sdkconfig.defaults file for ESP32-C3
-          cat > sdkconfig.defaults << EOF
-          CONFIG_IDF_TARGET="${espBoard}"
-          CONFIG_IDF_TARGET_ESP32C3=y
-          CONFIG_IDF_FIRMWARE_CHIP_ID=0x0005
-          CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
-          CONFIG_ESP_CONSOLE_UART_DEFAULT=y
-          EOF
-
-          echo ""
-          echo "Project initialized for ESP32-C3."
-          echo "Make sure to run 'install-esp-tools' if you haven't already."
+          echo "Run: source esp-idf-export.sh"
         '';
 
         # Create a script to build the project
@@ -176,16 +67,21 @@
           #!/usr/bin/env bash
           echo "Building ESP32-C3 project..."
 
-          if [ ! -f "$HOME/.espressif/esp-idf/export.sh" ]; then
-            echo "Error: ESP-IDF not found. Please run 'install-esp-tools' first."
-            exit 1
+          # Check if the ESP-IDF export script exists
+          if [ -f "esp-idf-export.sh" ]; then
+            source "esp-idf-export.sh" > /dev/null 2>&1
+          elif [ -f "$HOME/.espressif/esp-idf/export.sh" ]; then
+            source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1
+          else
+            echo "Warning: ESP-IDF export script not found."
+            echo "Have you run 'install-esp-tools' yet?"
           fi
 
-          # Source ESP-IDF environment
-          source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1
-
-          # Build with appropriate flags
-          RUSTFLAGS="--cfg espidf_time64" cargo build --release -Z build-std=std,panic_abort --target riscv32imc-unknown-none-elf
+          # Build with explicit features for esp32c3
+          RUSTFLAGS="--cfg espidf_time64" MCU=${espBoard} \
+            cargo build --release \
+            -Z build-std=std,panic_abort \
+            --target ${espArch}
 
           if [ $? -eq 0 ]; then
             echo ""
@@ -205,16 +101,8 @@
             exit 1
           fi
 
-          if [ ! -f "$HOME/.espressif/esp-idf/export.sh" ]; then
-            echo "Error: ESP-IDF not found. Please run 'install-esp-tools' first."
-            exit 1
-          fi
-
-          # Source ESP-IDF environment
-          source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1
-
           echo "Flashing to $1..."
-          cargo-espflash $1 --target riscv32imc-unknown-none-elf --release
+          cargo-espflash $1 --target ${espArch} --release
         '';
 
         # Create a monitor script
@@ -230,6 +118,55 @@
 
           echo "Opening serial monitor on $1 at $BAUD baud..."
           ${pkgs.screen}/bin/screen $1 $BAUD
+        '';
+
+        # Create build helper tools
+        espBuildHelpers = pkgs.writeShellScriptBin "esp-debug" ''
+          #!/usr/bin/env bash
+
+          echo "ESP32-C3 Build Environment Debug Information"
+          echo "==========================================="
+          echo ""
+
+          echo "Environment Variables:"
+          echo "ESP_ARCH=$ESP_ARCH"
+          echo "ESP_BOARD=$ESP_BOARD"
+          echo "ESP_IDF_VERSION=$ESP_IDF_VERSION"
+          echo "ESP_IDF_TOOLS_INSTALL_DIR=$ESP_IDF_TOOLS_INSTALL_DIR"
+          echo "MCU=$MCU"
+          echo "RUSTFLAGS=$RUSTFLAGS"
+          echo ""
+
+          echo "ESP-IDF installation:"
+          if [ -d "$HOME/.espressif" ]; then
+            echo "~/.espressif directory exists"
+            if [ -d "$HOME/.espressif/esp-idf" ]; then
+              echo "ESP-IDF appears to be installed"
+              if [ -f "$HOME/.espressif/esp-idf/export.sh" ]; then
+                echo "ESP-IDF export script exists"
+              else
+                echo "ESP-IDF export script missing"
+              fi
+            else
+              echo "ESP-IDF not found in ~/.espressif"
+            fi
+          else
+            echo "~/.espressif directory not found"
+          fi
+          echo ""
+
+          echo "Rust environment:"
+          cargo --version
+          rustc --version
+          echo ""
+
+          echo "Cargo metadata:"
+          cargo metadata --format-version=1 | grep -E 'esp-idf-sys|esp-idf-hal|features.*esp32c3' || echo "esp-idf-* packages not found or esp32c3 feature not enabled"
+          echo ""
+
+          echo "Checking ESP32-C3 toolchain:"
+          ls -la ~/.rustup/toolchains/*/lib/rustlib/${espArch} 2>/dev/null || echo "ESP32-C3 target not found in rustup toolchains"
+          echo ""
         '';
       in
       {
@@ -249,14 +186,14 @@
 
             # ESP tools
             esptool
+            espup
 
             # Custom scripts
             espToolsInstaller
-            projectInitializer
             buildScript
             flashScript
             monitorScript
-            cargoTomlPatch
+            espBuildHelpers
 
             # Build tools
             cmake
@@ -270,9 +207,6 @@
 
             # Python environment
             pythonEnv
-
-            # Configuration files
-            espCargoConfig
 
             # Additional tools
             just
@@ -293,19 +227,19 @@
             export ESP_ARCH="${espArch}"
             export ESP_BOARD="${espBoard}"
             export ESP_IDF_VERSION="v${espIdfVersion}"
-            export ESP_IDF_TOOLS_INSTALL_DIR="$HOME/.espressif"
+            export ESP_IDF_TOOLS_INSTALL_DIR="./.espressif"
             export MCU="${espBoard}"
 
             # Rust environment variables
             export RUSTFLAGS="--cfg espidf_time64"
-            export RUST_BACKTRACE=1
 
             # Allow Nix to run dynamically linked binaries
             export NIX_ENFORCE_PURITY=0
 
-            # Source ESP-IDF export script if it exists
-            if [ -f "$HOME/.espressif/esp-idf/export.sh" ]; then
-              source "$HOME/.espressif/esp-idf/export.sh" > /dev/null 2>&1 || true
+            # Source ESP-IDF export script if it exists in current directory
+            if [ -f "esp-idf-export.sh" ]; then
+              source "esp-idf-export.sh" > /dev/null 2>&1 || true
+              echo "Sourced esp-idf-export.sh from current directory"
             fi
 
             # Welcome message
@@ -315,16 +249,17 @@
             echo "  ESP_ARCH=${espArch}"
             echo "  ESP_BOARD=${espBoard}"
             echo "  ESP_IDF_VERSION=v${espIdfVersion}"
+            echo "  MCU=${espBoard}"
             echo ""
-            echo "Getting Started:"
-            echo "  1. Initialize project: init-esp-project"
-            echo "  2. Install ESP-IDF:   install-esp-tools"
-            echo "  3. Build project:     esp-build"
-            echo "  4. Flash to device:   esp-flash <PORT>"
-            echo "  5. Monitor device:    esp-monitor <PORT> [BAUD]"
+            echo "Workflow:"
+            echo "  1. Install:      install-esp-tools"
+            echo "  2. Set up env:   source esp-idf-export.sh"
+            echo "  3. Build:        esp-build"
+            echo "  4. Flash:        esp-flash <PORT>"
+            echo "  5. Monitor:      esp-monitor <PORT> [BAUD]"
             echo ""
-            echo "Make sure your Cargo.toml includes:"
-            echo "  esp-idf-sys = { version = \"0.36.1\", features = [\"esp32c3\"] }"
+            echo "Debugging:"
+            echo "  - Show config:   esp-debug"
             echo ""
           '';
 
@@ -335,7 +270,6 @@
           MCU = espBoard;
           NIX_ENFORCE_PURITY = 0;
           RUSTFLAGS = "--cfg espidf_time64";
-          RUST_BACKTRACE = 1;
         };
       });
 }

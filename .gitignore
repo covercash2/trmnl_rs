@@ -13,5 +13,7 @@ devenv.local.nix
 # see build.rs
 cfg.toml
 
+.esp-idf-sys
+
 # Rust
 target/
