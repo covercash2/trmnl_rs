@@ -1,12 +1,10 @@
 [build]
 target = "riscv32imc-esp-espidf"
-esp-idf-version = "v5.3.2"
-mcu = "esp32c3"
 
-[target.riscv32imc-esp-espidf]
+[target.riscv32imc-riscv-esp-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor"
-rustflags = [ "--cfg",  "espidf_time64"]
+rustflags = [ "--cfg",  "espidf_time64", "-Z", "build-std"]
 
 [unstable]
 build-std = ["std", "panic_abort"]

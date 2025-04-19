@@ -27,7 +27,7 @@
             "rust-analyzer"
             "llvm-tools-preview"
           ];
-          # targets = [ "riscv32imc-esp-espidf" ];  # ESP32-C3 uses RISC-V architecture
+          # targets = [ "riscv32imc-unknown-none-elf" ];  # ESP32-C3 uses RISC-V architecture
         };
 
         # Python dependencies for ESP-IDF
@@ -149,6 +149,7 @@
             rustup
 
             # ESP tools
+            ldproxy
             espflash
             esptool
             # espup
@@ -202,6 +203,7 @@
             export ESP_ARCH="${espArch}"
             export ESP_BOARD="${espBoard}"
             export ESP_IDF_VERSION="v${espIdfVersion}"
+            export ESP_IDF_TOOLS_INSTALL_DIR=".embuild/espressif"
             export MCU="${espBoard}"
 
             # Rust environment variables
