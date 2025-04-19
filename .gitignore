@@ -1,21 +1,4 @@
-# Devenv
-.devenv*
-devenv.local.nix
-
-# direnv
-.direnv
-
-# pre-commit
-.pre-commit-config.yaml
-
-.embuild
-
-# see build.rs
-cfg.toml
-
-# generated files
-.esp-idf-sys
-esp-idf-export.sh"
-
-# Rust
-target/
+/.vscode
+/.embuild
+/target
+/Cargo.lock

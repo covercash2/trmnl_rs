@@ -56,9 +56,12 @@
           #!/usr/bin/env bash
           echo "Installing ESP tools..."
 
+          # install espup with cargo since nixpkgs is behind
+          cargo install espup
+
           # Install ESP-IDF with esp32c3 target
           echo "Installing ESP-IDF for ESP32-C3..."
-          espup install --targets ${espBoard} --export-file esp-idf-export.sh
+          espup install --targets ${espBoard} --stable-version nightly --export-file esp-idf-export.sh
 
           echo ""
           echo "ESP tools installed successfully!"
@@ -94,7 +97,6 @@
           echo "ESP_ARCH=$ESP_ARCH"
           echo "ESP_BOARD=$ESP_BOARD"
           echo "ESP_IDF_VERSION=$ESP_IDF_VERSION"
-          echo "ESP_IDF_TOOLS_INSTALL_DIR=$ESP_IDF_TOOLS_INSTALL_DIR"
           echo "MCU=$MCU"
           echo "RUSTFLAGS=$RUSTFLAGS"
           echo ""
@@ -149,7 +151,7 @@
             # ESP tools
             espflash
             esptool
-            espup
+            # espup
 
             # Custom scripts
             espToolsInstaller
@@ -186,13 +188,20 @@
               pkgs.llvmPackages_16.libclang.lib
               pkgs.openssl
               pkgs.zlib
+              pkgs.glib
+              ".embuild/espressif/tools/riscv32-esp-elf/esp-13.2.0_20240530/riscv32-esp-elf/lib"
             ]}:$LD_LIBRARY_PATH
+
+            # Set NIX_LD if it's not already set
+            export NIX_LD="${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
+
+            # Allow Nix to find the dynamic linker
+            export NIX_DYNAMIC_LINKER="${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
 
             # ESP environment variables
             export ESP_ARCH="${espArch}"
             export ESP_BOARD="${espBoard}"
             export ESP_IDF_VERSION="v${espIdfVersion}"
-            export ESP_IDF_TOOLS_INSTALL_DIR="./.espressif"
             export MCU="${espBoard}"
 
             # Rust environment variables
@@ -206,8 +215,6 @@
               source "esp-idf-export.sh" > /dev/null 2>&1 || true
               echo "Sourced esp-idf-export.sh from current directory"
             fi
-
-
 
             # Welcome message
             echo "🦀 ESP32-C3 Rust development environment ready"
