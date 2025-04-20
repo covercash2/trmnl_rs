@@ -23,12 +23,22 @@
         rust = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [ "rust-src" "rust-analyzer" ];
         };
+
+        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
+          # Add your Python packages here, for example:
+          pip
+          setuptools
+          wheel
+          # Add any other Python packages you need
+        ]);
       in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             rust
+            pythonEnv
 
+            # ESP-IDF prereqs
             # https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html#for-linux-users
             bison
             ccache
@@ -41,8 +51,10 @@
             libusb1
             ninja
 
+            # build tools
+            cargo-generate
+
             ldproxy
-            # Add other dependencies here if needed
           ];
         };
       }
