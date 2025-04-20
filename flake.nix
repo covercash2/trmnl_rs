@@ -43,9 +43,6 @@
             ninja
             python3
 
-            # build tools
-            cargo-generate
-
             ldproxy
           ];
         };
