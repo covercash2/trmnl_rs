@@ -24,7 +24,7 @@
           extensions = [ "rust-src" "rust-analyzer" ];
         };
 
-        # Create FHS environment
+        # Create FHS environment in order to build `esp-idf`
         fhs = pkgs.buildFHSUserEnv {
           name = "esp-idf-env";
           targetPkgs = pkgs: (with pkgs; [
@@ -58,6 +58,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             fhs
+            rust
           ];
 
           shellHook = ''
