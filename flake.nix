@@ -23,11 +23,13 @@
         rust = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [ "rust-src" "rust-analyzer" ];
         };
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
+
+        # Create FHS environment
+        fhs = pkgs.buildFHSUserEnv {
+          name = "esp-idf-env";
+          targetPkgs = pkgs: (with pkgs; [
             rust
+            python3
 
             # ESP-IDF prereqs
             # https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html#for-linux-users
@@ -40,11 +42,27 @@
             gnumake
             gperf
             libusb1
+            libxml2
             ninja
             python3
 
             ldproxy
+
+            stdenv.cc
+            zlib
+            ncurses5
+          ]);
+        };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            fhs
           ];
+
+          shellHook = ''
+            exec esp-idf-env
+          '';
         };
       }
     );
