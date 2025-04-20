@@ -51,6 +51,8 @@
             stdenv.cc
             zlib
             ncurses5
+
+            nushell
           ]);
         };
       in
@@ -59,10 +61,17 @@
           buildInputs = with pkgs; [
             fhs
             rust
+
+            cargo-espflash
+            espflash
+            ldproxy
+            python3
+
+            just
           ];
 
           shellHook = ''
-            exec esp-idf-env
+            # exec esp-idf-env
           '';
         };
       }
