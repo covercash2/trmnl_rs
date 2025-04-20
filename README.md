@@ -9,7 +9,7 @@ just a hobby project.
 you need to have `nix` installed with flakes enabled: https://nixos.org/download.html
 
 > [!NOTE]
-> i use macOS and nushell and may have built in some opinions.
+> i use macOS and NixOS and nushell and may have built in some opinions.
 > i'm open to contributions if there's interest,
 > but you can pry nushell out of my cold, dead laptop.
 
