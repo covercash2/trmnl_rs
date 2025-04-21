@@ -11,12 +11,12 @@ pub fn wifi(
     modem: impl Peripheral<P = Modem> + 'static,
     sysloop: EspSystemEventLoop,
 ) -> anyhow::Result<Box<EspWifi<'static>>> {
-    log::info!("starting wifi {ssid} {password} ...");
+    log::info!("starting wifi '{ssid}'...");
 
     let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
     let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
 
-    wifi.set_configuration(&Configuration::default())?;
+    wifi.set_configuration(&Configuration::Client(ClientConfiguration::default()))?;
 
     wifi.start()?;
 
