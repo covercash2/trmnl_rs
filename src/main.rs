@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     let sysloop = EspSystemEventLoop::take()?;
 
     let _wifi = wifi::wifi(
-        "wirt 2.4"
+        "wirt_2.4"
             .try_into()
             .map_err(|()| anyhow::anyhow!("couldn't parse ssid"))?,
         "rosy&nina"

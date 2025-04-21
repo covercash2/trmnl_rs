@@ -16,8 +16,6 @@ pub fn wifi(
     let mut esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
     let mut wifi = BlockingWifi::wrap(&mut esp_wifi, sysloop)?;
 
-    lo
-
     wifi.set_configuration(&Configuration::default())?;
 
     wifi.start()?;
