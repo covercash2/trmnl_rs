@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use esp_idf_svc::{eventloop::EspSystemEventLoop, hal::prelude::Peripherals, log::EspLogger, sys::nvs_flash_init};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop, hal::prelude::Peripherals, log::EspLogger, sys::nvs_flash_init,
+};
 
 pub mod wifi;
 
